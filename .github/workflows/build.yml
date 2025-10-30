@@ -1,0 +1,31 @@
+name: Build ZMK firmware
+on:
+  workflow_dispatch:
+  push:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: zmkfirmware/zmk-dev-arm:stable
+    steps:
+      - uses: actions/checkout@v4
+      - name: west init
+        run: west init -l config
+      - name: west update
+        run: west update
+      - name: Build LEFT (central)
+        run: |
+          west build -s zmk/app -d build/left -b nice_nano_v2 \
+            -- -DSHIELD=sofle_left -DZMK_CONFIG=${GITHUB_WORKSPACE}/config \
+               -DCONFIG_ZMK_SPLIT=y -DCONFIG_ZMK_BLE=y
+      - name: Build RIGHT (peripheral)
+        run: |
+          west build -s zmk/app -d build/right -b nice_nano_v2 \
+            -- -DSHIELD=sofle_right -DZMK_CONFIG=${GITHUB_WORKSPACE}/config \
+               -DCONFIG_ZMK_SPLIT=y -DCONFIG_ZMK_BLE=y -DCONFIG_ZMK_SPLIT_ROLE_PERIPHERAL=y
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            build/left/zephyr/zmk.uf2
+            build/right/zephyr/zmk.uf2
